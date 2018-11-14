@@ -1,8 +1,19 @@
+
 #include "stdafx.h"
+#include<stdio.h>
+#include<stdlib.h>
+#include <intrin.h>
+#include <iostream>
+#include <algorithm>
+#include <memory>
 #include "thread"
 #include <vector>
+#include <windows.h>
 
-unsigned char * resultBMP; //It is here for tests
+using namespace std;
+
+
+BYTE * resultBMP; //It is here for tests
 
 int detectNumberOfCores() {
 	SYSTEM_INFO sysinfo;
@@ -33,25 +44,25 @@ int getSizeOfBmp(char *filename)
 {
 	return getHeightOfBmp(filename) * getWidthOfBmp(filename) * 3;
 }
-unsigned char* readBMP(char* filename) // TODO: padding
+BYTE* readBMP(char* filename) // TODO: padding
 {
 	FILE* file = fopen(filename, "rb");
 
 	int size = getSizeOfBmp(filename);
 
-	unsigned char* data = new unsigned char[size];
+	BYTE* data = new BYTE[size];
 
 	fread(data, sizeof(unsigned char), size, file);
 
 	fclose(file);
 
-	/*for (int i = 0; i < size; i += 3)
-	{
-		cout << "B: " << (int)data[i];
-		cout << " G: " << (int)data[i + 1];
-		cout << " R: " << (int)data[i + 2];
-		cout << endl;
-	}*/
+	//for (int i = 0; i < size; i += 3)
+	//{
+	//	cout << "B: " << (int)data[i];
+	//	cout << " G: " << (int)data[i + 1];
+	//	cout << " R: " << (int)data[i + 2];
+	//	cout << endl;
+	//}
 
 	return data;
 }
@@ -63,17 +74,31 @@ unsigned char** divideData(unsigned char* bmp, int numberOfThreads, int dataSize
 
 	return dividedData;
 }
-void executeAlgorithm(unsigned char* bmp1, unsigned char* bmp2,int size)
+void executeAlgorithm(BYTE* bmp1, BYTE* bmp2,int start,int size)
 {
-	resultBMP = new unsigned char[size];
+	
 	for (int i = 0; i < size; i+=3)
 	{
 		/*if (i >= size) {
 			break;
 		}*/
-		resultBMP[i] = ((int)bmp1[i] + (int)bmp2[i]) / 2;
-		resultBMP[i + 1] = ((int)bmp1[i + 1] + (int)bmp2[i + 1]) / 2;
-		resultBMP[i + 2] = ((int)bmp1[i + 2] + (int)bmp2[i + 2]) / 2;
+		resultBMP[start +i] = ((int)bmp1[i] + (int)bmp2[i]) / 2;
+		resultBMP[start +i + 1] = ((int)bmp1[i + 1] + (int)bmp2[i + 1]) / 2;
+		resultBMP[start +i + 2] = ((int)bmp1[i + 2] + (int)bmp2[i + 2]) / 2;
+
+		/**resultBMP = ((int)*bmp1 + (int)*bmp2) / 2;
+		*(resultBMP+1) = ((int)*(bmp1+1) + (int)*(bmp2+1)) / 2;
+		*(resultBMP+2) = ((int)*(bmp1+2) + (int)*(bmp2+2)) / 2;*/
+
+		/**(resultBMP) = ((int)bmp1[i] + (int)bmp2[i]) / 2;
+		*(resultBMP + 1) = ((int)bmp1[i + 1] + (int)bmp2[i + 1]) / 2;
+		*(resultBMP + 2) = ((int)bmp1[i + 2] + (int)bmp2[i + 2]) / 2; 
+
+		resultBMP += 3;*/
+		/*bmp1 += 3;
+		bmp2 += 3;*/
+
+		
 
 		/*if ((int)bmp1[i] != (int)bmp2[i] || (int)bmp1[i+1] != (int)bmp2[i+1]|| (int)bmp1[i+2] != (int)bmp2[i+2])
 		{
@@ -86,27 +111,33 @@ void executeAlgorithm(unsigned char* bmp1, unsigned char* bmp2,int size)
 		
 	}
 }
-vector<thread> createThreads(unsigned char* bmp1,unsigned char* bmp2,int numberOfThreads,int dataSize) 
+vector<thread> createThreads(BYTE* bmp1,BYTE* bmp2,int numberOfThreads,int dataSize) 
 {
-	unsigned char** dividedBmp1 = divideData(bmp1, numberOfThreads,dataSize);
-	unsigned char** dividedBmp2 = divideData(bmp2, numberOfThreads, dataSize);
 	vector<thread> result;
-
-
-	for (int i = 0; i < numberOfThreads; i++) 
+	resultBMP = new BYTE[dataSize];
+	int currentIndexOfWrittingToResultBMP = 0;
+	if (dataSize%numberOfThreads==0) 
 	{
-		thread thread(executeAlgorithm, dividedBmp1[i], dividedBmp2[i],dataSize);
-		result.push_back(move(thread));	
+		int newDataSize = dataSize / numberOfThreads;
+		for (int i = 0; i < numberOfThreads; i++)
+		{
+			thread thread(executeAlgorithm, bmp1, bmp2,currentIndexOfWrittingToResultBMP, newDataSize);
+			result.push_back(move(thread));
+			bmp1 += newDataSize;
+			bmp2 += newDataSize;
+			currentIndexOfWrittingToResultBMP += newDataSize;
+		}
+	}
+	else 
+	{
+
 	}
 	
-	//executeAlgorithm(dividedBmp1[0], dividedBmp2[0], dataSize);
-
 	return result;
 }
-bool checkIfBmpsHaveSameSize(unsigned char* bmp1, unsigned char* bmp2) {
-	return true;
-}
-void drawbmp(char * filename,int width,int height,int size) {
+
+void drawbmp(char * filename,int width,int height,int size) //TODO FIX
+{
 
 	unsigned int headers[13];
 	FILE * outfile;
@@ -203,21 +234,116 @@ void drawbmp(char * filename,int width,int height,int size) {
 	{
 		fprintf(outfile, "%c", resultBMP[i]);
 	}
-
 	fclose(outfile);
 	return;
+}
+void SaveBitmapToFile(BYTE* pBitmapBits,
+	LONG lWidth,
+	LONG lHeight,
+	WORD wBitsPerPixel,
+	const unsigned long& padding_size,
+	LPCTSTR lpszFileName)
+{
+	// Some basic bitmap parameters  
+	unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
+		sizeof(BITMAPINFOHEADER);
+
+	unsigned long pixel_data_size = lHeight * ((lWidth * (wBitsPerPixel / 8)) + padding_size);
+
+	BITMAPINFOHEADER bmpInfoHeader = { 0 };
+
+	// Set the size  
+	bmpInfoHeader.biSize = sizeof(BITMAPINFOHEADER);
+
+	// Bit count  
+	bmpInfoHeader.biBitCount = wBitsPerPixel;
+
+	// Use all colors  
+	bmpInfoHeader.biClrImportant = 0;
+
+	// Use as many colors according to bits per pixel  
+	bmpInfoHeader.biClrUsed = 0;
+
+	// Store as un Compressed  
+	bmpInfoHeader.biCompression = BI_RGB;
+
+	// Set the height in pixels  
+	bmpInfoHeader.biHeight = lHeight;
+
+	// Width of the Image in pixels  
+	bmpInfoHeader.biWidth = lWidth;
+
+	// Default number of planes  
+	bmpInfoHeader.biPlanes = 1;
+
+	// Calculate the image size in bytes  
+	bmpInfoHeader.biSizeImage = pixel_data_size;
+
+	BITMAPFILEHEADER bfh = { 0 };
+
+	// This value should be values of BM letters i.e 0x4D42  
+	// 0x4D = M 0×42 = B storing in reverse order to match with endian  
+	bfh.bfType = 0x4D42;
+	//bfh.bfType = 'B'+('M' << 8); 
+
+	// <<8 used to shift ‘M’ to end  */  
+
+	// Offset to the RGBQUAD  
+	bfh.bfOffBits = headers_size;
+
+	// Total size of image including size of headers  
+	bfh.bfSize = headers_size + pixel_data_size;
+
+	// Create the file in disk to write  
+	HANDLE hFile = CreateFile(lpszFileName,
+		GENERIC_WRITE,
+		0,
+		NULL,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		NULL);
+
+	// Return if error opening file  
+	if (!hFile) return;
+
+	DWORD dwWritten = 0;
+
+	// Write the File header  
+	WriteFile(hFile,
+		&bfh,
+		sizeof(bfh),
+		&dwWritten,
+		NULL);
+
+	// Write the bitmap info header  
+	WriteFile(hFile,
+		&bmpInfoHeader,
+		sizeof(bmpInfoHeader),
+		&dwWritten,
+		NULL);
+
+	// Write the RGB Data  
+	WriteFile(hFile,
+		pBitmapBits,
+		bmpInfoHeader.biSizeImage,
+		&dwWritten,
+		NULL);
+
+	// Close the file handle  
+	CloseHandle(hFile);
 }
 
 int main()
 {
-	char *bmpName1 = "michal.bmp";
-	char *bmpName2 = "ola.bmp";
+	char *bmpName1 = "t5.bmp";
+	char *bmpName2 = "t6.bmp";
+	int numberOfThreads = 2;
 	cout << "Liczba rdzeni: " << detectNumberOfCores() << endl;
 	auto bmp1 = readBMP(bmpName1);
 	auto bmp2 = readBMP(bmpName2);
 	auto bmp1Size = getSizeOfBmp(bmpName1);
 	auto bmp2Size = getSizeOfBmp(bmpName2);
-
+	SaveBitmapToFile(bmp1, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), 24, 0, L"bmp1");
 
 
 	if (bmp1Size!=bmp2Size) 
@@ -227,9 +353,17 @@ int main()
 	}
 
 	auto bmpsSize = bmp1Size;//bmp1Size same as bmp2Size
-	auto threads = createThreads(bmp1, bmp2, 1,bmpsSize);
-	threads[0].join();
-	drawbmp("result", getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), bmpsSize);
+	auto threads = createThreads(bmp1, bmp2, numberOfThreads,bmpsSize);
+	for (int i = 0; i < numberOfThreads; i++) 
+	{
+		threads[i].join();
+	}
+	string str = "result";
+	LPCTSTR result = L"result";
+	//LPCWSTR result1 = "result";
+	//result1 = str.c_str();
+	//drawbmp("result", getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), bmpsSize);
+	SaveBitmapToFile(resultBMP, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), 24, 0, result);
 	cout << "done" << endl;
 	getchar();
 	return 0;
