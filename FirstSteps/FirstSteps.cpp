@@ -13,14 +13,14 @@
 using namespace std;
 
 
-BYTE * resultBMP; //It is here for tests
+BYTE * resultBitmap; //It is here for tests
 
 int detectNumberOfCores() {
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo(&sysinfo);
 	return sysinfo.dwNumberOfProcessors;
 }
-int getWidthOfBmp(char* filename) 
+int getWidthOfBitmap(char* filename) 
 {
 	FILE* file = fopen(filename, "rb");
 	unsigned char info[54];
@@ -30,7 +30,7 @@ int getWidthOfBmp(char* filename)
 
 	fclose(file);
 }
-int getHeightOfBmp(char* filename)
+int getHeightOfBitmap(char* filename)
 {
 	FILE* file = fopen(filename, "rb");
 	unsigned char info[54];
@@ -42,252 +42,68 @@ int getHeightOfBmp(char* filename)
 }
 int getSizeOfBmp(char *filename) 
 {
-	return getHeightOfBmp(filename) * getWidthOfBmp(filename) * 3;
+	return getHeightOfBitmap(filename) * getWidthOfBitmap(filename) * 3;
 }
-BYTE* readBMP(char* filename) // TODO: padding
+void executeBitmapFushion(BYTE* firstBitmap, BYTE* secondBitmap,int currentIndexOfWrittingToResultBitmap,int bitmapSize)
 {
-	FILE* file = fopen(filename, "rb");
-
-	int size = getSizeOfBmp(filename);
-
-	BYTE* data = new BYTE[size];
-
-	fread(data, sizeof(unsigned char), size, file);
-
-	fclose(file);
-
-	//for (int i = 0; i < size; i += 3)
-	//{
-	//	cout << "B: " << (int)data[i];
-	//	cout << " G: " << (int)data[i + 1];
-	//	cout << " R: " << (int)data[i + 2];
-	//	cout << endl;
-	//}
-
-	return data;
-}
-unsigned char** divideData(unsigned char* bmp, int numberOfThreads, int dataSize)
-{
-	unsigned char** dividedData = new unsigned char*[1];
-
-	dividedData[0] = bmp;
-
-	return dividedData;
-}
-void executeAlgorithm(BYTE* bmp1, BYTE* bmp2,int start,int size)
-{
-	
-	for (int i = 0; i < size; i+=3)
+	for (int i = 0; i < bitmapSize; i+=3)
 	{
-		/*if (i >= size) {
-			break;
-		}*/
-		resultBMP[start +i] = ((int)bmp1[i] + (int)bmp2[i]) / 2;
-		resultBMP[start +i + 1] = ((int)bmp1[i + 1] + (int)bmp2[i + 1]) / 2;
-		resultBMP[start +i + 2] = ((int)bmp1[i + 2] + (int)bmp2[i + 2]) / 2;
+		//TODO: THINK ABOUT i+=3
 
-		/**resultBMP = ((int)*bmp1 + (int)*bmp2) / 2;
-		*(resultBMP+1) = ((int)*(bmp1+1) + (int)*(bmp2+1)) / 2;
-		*(resultBMP+2) = ((int)*(bmp1+2) + (int)*(bmp2+2)) / 2;*/
-
-		/**(resultBMP) = ((int)bmp1[i] + (int)bmp2[i]) / 2;
-		*(resultBMP + 1) = ((int)bmp1[i + 1] + (int)bmp2[i + 1]) / 2;
-		*(resultBMP + 2) = ((int)bmp1[i + 2] + (int)bmp2[i + 2]) / 2; 
-
-		resultBMP += 3;*/
-		/*bmp1 += 3;
-		bmp2 += 3;*/
-
-		
-
-		/*if ((int)bmp1[i] != (int)bmp2[i] || (int)bmp1[i+1] != (int)bmp2[i+1]|| (int)bmp1[i+2] != (int)bmp2[i+2])
-		{
-			cout << "RB: " << (int)resultBMP[i] << " 1B: " << int(bmp1[i]) << " 2B: " << int(bmp2[i]) << endl;
-			cout << "RB: " << (int)resultBMP[i + 1] << " 1B: " << int(bmp1[i + 1]) << "2B: " << int(bmp2[i + 1]) << endl;
-			cout << "RB: " << (int)resultBMP[i + 2] << " 1B: " << int(bmp1[i + 2]) << " 2B: " << int(bmp2[i + 2]) << endl;
-
-			getchar();
-		}*/
-		
+		resultBitmap[currentIndexOfWrittingToResultBitmap +i] = ((int)firstBitmap[i] + (int)secondBitmap[i]) / 2;
+		resultBitmap[currentIndexOfWrittingToResultBitmap +i + 1] = ((int)firstBitmap[i + 1] + (int)secondBitmap[i + 1]) / 2;
+		resultBitmap[currentIndexOfWrittingToResultBitmap +i + 2] = ((int)firstBitmap[i + 2] + (int)secondBitmap[i + 2]) / 2;
 	}
 }
-vector<thread> createThreads(BYTE* bmp1,BYTE* bmp2,int numberOfThreads,int dataSize) 
+vector<thread> createThreads(BYTE* firstBitmap,BYTE* secondBitmap,int numberOfThreads,int bitmapSize) 
 {
 	vector<thread> result;
-	resultBMP = new BYTE[dataSize];
-	int currentIndexOfWrittingToResultBMP = 0;
-	if (dataSize%numberOfThreads==0) 
+	resultBitmap = new BYTE[bitmapSize];//TODO: IT shoudn't be here
+	int currentIndexOfWrittingToResultBitmap = 0;
+	if (bitmapSize%numberOfThreads==0) 
 	{
-		int newDataSize = dataSize / numberOfThreads;
+		int partialDataSize = bitmapSize / numberOfThreads;
 		for (int i = 0; i < numberOfThreads; i++)
 		{
-			thread thread(executeAlgorithm, bmp1, bmp2,currentIndexOfWrittingToResultBMP, newDataSize);
+			thread thread(executeBitmapFushion, firstBitmap, secondBitmap,currentIndexOfWrittingToResultBitmap, partialDataSize);
 			result.push_back(move(thread));
-			bmp1 += newDataSize;
-			bmp2 += newDataSize;
-			currentIndexOfWrittingToResultBMP += newDataSize;
+			firstBitmap += partialDataSize;
+			secondBitmap += partialDataSize;
+			currentIndexOfWrittingToResultBitmap += partialDataSize;
 		}
 	}
 	else 
 	{
-
+		//TODO: PADING
 	}
 	
 	return result;
 }
 
-void drawbmp(char * filename,int width,int height,int size) //TODO FIX
-{
 
-	unsigned int headers[13];
-	FILE * outfile;
-	int extrabytes;
-	int paddedsize;
-	int x; int y; int n;
-	int red, green, blue;
-
-	extrabytes = 4 - ((width * 3) % 4);                 // How many bytes of padding to add to each
-														// horizontal line - the size of which must
-														// be a multiple of 4 bytes.
-	if (extrabytes == 4)
-		extrabytes = 0;
-
-	paddedsize = ((width * 3) + extrabytes) * height;
-
-	// Headers...
-	// Note that the "BM" identifier in bytes 0 and 1 is NOT included in these "headers".
-
-	headers[0] = paddedsize + 54;      // bfSize (whole file size)
-	headers[1] = 0;                    // bfReserved (both)
-	headers[2] = 54;                   // bfOffbits
-	headers[3] = 40;                   // biSize
-	headers[4] = width;  // biWidth
-	headers[5] = height; // biHeight
-
-						 // Would have biPlanes and biBitCount in position 6, but they're shorts.
-						 // It's easier to write them out separately (see below) than pretend
-						 // they're a single int, especially with endian issues...
-
-	headers[7] = 0;                    // biCompression
-	headers[8] = paddedsize;           // biSizeImage
-	headers[9] = 0;                    // biXPelsPerMeter
-	headers[10] = 0;                    // biYPelsPerMeter
-	headers[11] = 0;                    // biClrUsed
-	headers[12] = 0;                    // biClrImportant
-
-	outfile = fopen(filename, "wb");
-
-	//
-	// Headers begin...
-	// When printing ints and shorts, we write out 1 character at a time to avoid endian issues.
-	//
-
-	fprintf(outfile, "BM");
-
-	for (n = 0; n <= 5; n++)
-	{
-		fprintf(outfile, "%c", headers[n] & 0x000000FF);
-		fprintf(outfile, "%c", (headers[n] & 0x0000FF00) >> 8);
-		fprintf(outfile, "%c", (headers[n] & 0x00FF0000) >> 16);
-		fprintf(outfile, "%c", (headers[n] & (unsigned int)0xFF000000) >> 24);
-	}
-
-	// These next 4 characters are for the biPlanes and biBitCount fields.
-
-	fprintf(outfile, "%c", 1);
-	fprintf(outfile, "%c", 0);
-	fprintf(outfile, "%c", 24);
-	fprintf(outfile, "%c", 0);
-
-	for (n = 7; n <= 12; n++)
-	{
-		fprintf(outfile, "%c", headers[n] & 0x000000FF);
-		fprintf(outfile, "%c", (headers[n] & 0x0000FF00) >> 8);
-		fprintf(outfile, "%c", (headers[n] & 0x00FF0000) >> 16);
-		fprintf(outfile, "%c", (headers[n] & (unsigned int)0xFF000000) >> 24);
-	}
-
-	//
-	// Headers done, now write the data...
-	//
-
-	//for (y = height - 1; y >= 0; y--)     // BMP image format is written from bottom to top...
-	//{
-	//	for (x = 0; x <= width - 1; x++)
-	//	{
-	//		// Also, it's written in (b,g,r) format...
-
-	//		fprintf(outfile, "%c", blue);
-	//		fprintf(outfile, "%c", green);
-	//		fprintf(outfile, "%c", red);
-	//	}
-	//	if (extrabytes)      // See above - BMP lines must be of lengths divisible by 4.
-	//	{
-	//		for (n = 1; n <= extrabytes; n++)
-	//		{
-	//			fprintf(outfile, "%c", 0);
-	//		}
-	//	}
-	//}
-
-	for (int i = 0; i < size; i++) 
-	{
-		fprintf(outfile, "%c", resultBMP[i]);
-	}
-	fclose(outfile);
-	return;
-}
-
-BYTE *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader, BITMAPFILEHEADER& fileHeader)
+BYTE *LoadBitmapFile(char *filename)
 {
 	FILE *filePtr; //file pointer
 	BITMAPFILEHEADER bitmapFileHeader; //bitmap file header
 	byte *bitmapImage;  //image data array
-	int imageIdx = 0;  //image index counter
-
 
 					   //open filename in read binary mode
 	filePtr = fopen(filename, "rb");
-	if (filePtr == NULL)
-		return NULL;
 
 	//read the bitmap file header
 	fread(&bitmapFileHeader, sizeof(BITMAPFILEHEADER), 1, filePtr);
 
-	//verify that this is a bmp file by check bitmap id
-
-	if (bitmapFileHeader.bfType != 0x4D42)
-	{
-		fclose(filePtr);
-		return NULL;
-	}
-
-	//read the bitmap info header
-	fread(bitmapInfoHeader, sizeof(BITMAPINFOHEADER), 1, filePtr);
 	//move file point to the begging of bitmap data
 	fseek(filePtr, bitmapFileHeader.bfOffBits, SEEK_SET);
 
 	//allocate enough memory for the bitmap image data
-	bitmapImage = (byte*)malloc(bitmapInfoHeader->biSizeImage);
 
-	//verify memory allocation
-	if (!bitmapImage)
-	{
-		free(bitmapImage);
-		fclose(filePtr);
-		return NULL;
-	}
+	int bitmapSize = getSizeOfBmp(filename);
+
+	bitmapImage = new BYTE[bitmapSize];
 
 	//read in the bitmap image data
-	fread(bitmapImage, bitmapInfoHeader->biSizeImage, 1, filePtr);
-
-	//make sure bitmap image data was read
-	if (bitmapImage == NULL)
-	{
-		fclose(filePtr);
-		return NULL;
-	}
-	fileHeader = bitmapFileHeader;
+	fread(bitmapImage, bitmapSize, 1, filePtr);
 
 	//close file and return bitmap iamge data
 	fclose(filePtr);
@@ -304,7 +120,7 @@ void SaveBitmapToFile(BYTE* pBitmapBits,
 	unsigned long headers_size = sizeof(BITMAPFILEHEADER) +
 		sizeof(BITMAPINFOHEADER);
 
-	unsigned long pixel_data_size = lHeight * ((lWidth * (wBitsPerPixel / 8)) + padding_size);
+	unsigned long pixel_data_size = getSizeOfBmp("t5.bmp");
 
 	BITMAPINFOHEADER bmpInfoHeader = { 0 };
 
@@ -314,23 +130,12 @@ void SaveBitmapToFile(BYTE* pBitmapBits,
 	// Bit count  
 	bmpInfoHeader.biBitCount = wBitsPerPixel;
 
-	// Use all colors  
-	bmpInfoHeader.biClrImportant = 0;
-
-	// Use as many colors according to bits per pixel  
-	bmpInfoHeader.biClrUsed = 0;
-
-	// Store as un Compressed  
-	bmpInfoHeader.biCompression = BI_RGB;
-
 	// Set the height in pixels  
 	bmpInfoHeader.biHeight = lHeight;
 
 	// Width of the Image in pixels  
 	bmpInfoHeader.biWidth = lWidth;
 
-	// Default number of planes  
-	bmpInfoHeader.biPlanes = 1;
 
 	// Calculate the image size in bytes  
 	bmpInfoHeader.biSizeImage = pixel_data_size;
@@ -400,12 +205,12 @@ int main()
 	/*auto bmp1 = readBMP(bmpName1);
 	auto bmp2 = readBMP(bmpName2);*/
 
-	auto bmp1 = LoadBitmapFile(bmpName1,&header,fileHeader);
-	auto bmp2 = LoadBitmapFile(bmpName2,&header,fileHeader); 
+	auto bmp1 = LoadBitmapFile(bmpName1);
+	auto bmp2 = LoadBitmapFile(bmpName2); 
 	auto bmp1Size = getSizeOfBmp(bmpName1);
 	auto bmp2Size = getSizeOfBmp(bmpName2);
-	SaveBitmapToFile(bmp1, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName1), 24, 0, L"bmp1");
-	SaveBitmapToFile(bmp2, getWidthOfBmp(bmpName2), getHeightOfBmp(bmpName2), 24, 0, L"bmp2");
+	SaveBitmapToFile(bmp1, getWidthOfBitmap(bmpName1), getHeightOfBitmap(bmpName1), 24, 0, L"bmp1");
+	SaveBitmapToFile(bmp2, getWidthOfBitmap(bmpName2), getHeightOfBitmap(bmpName2), 24, 0, L"bmp2");
 
 
 	if (bmp1Size!=bmp2Size) 
@@ -425,7 +230,7 @@ int main()
 	//LPCWSTR result1 = "result";
 	//result1 = str.c_str();
 	//drawbmp("result", getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), bmpsSize);
-	SaveBitmapToFile(resultBMP, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName1), 24, 0, result);
+	SaveBitmapToFile(resultBitmap, getWidthOfBitmap(bmpName1), getHeightOfBitmap(bmpName1), 24, 0, result);
 	cout << "done" << endl;
 	getchar();
 	return 0;
