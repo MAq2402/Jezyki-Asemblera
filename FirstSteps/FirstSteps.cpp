@@ -237,6 +237,62 @@ void drawbmp(char * filename,int width,int height,int size) //TODO FIX
 	fclose(outfile);
 	return;
 }
+
+BYTE *LoadBitmapFile(char *filename, BITMAPINFOHEADER *bitmapInfoHeader, BITMAPFILEHEADER& fileHeader)
+{
+	FILE *filePtr; //file pointer
+	BITMAPFILEHEADER bitmapFileHeader; //bitmap file header
+	byte *bitmapImage;  //image data array
+	int imageIdx = 0;  //image index counter
+
+
+					   //open filename in read binary mode
+	filePtr = fopen(filename, "rb");
+	if (filePtr == NULL)
+		return NULL;
+
+	//read the bitmap file header
+	fread(&bitmapFileHeader, sizeof(BITMAPFILEHEADER), 1, filePtr);
+
+	//verify that this is a bmp file by check bitmap id
+
+	if (bitmapFileHeader.bfType != 0x4D42)
+	{
+		fclose(filePtr);
+		return NULL;
+	}
+
+	//read the bitmap info header
+	fread(bitmapInfoHeader, sizeof(BITMAPINFOHEADER), 1, filePtr);
+	//move file point to the begging of bitmap data
+	fseek(filePtr, bitmapFileHeader.bfOffBits, SEEK_SET);
+
+	//allocate enough memory for the bitmap image data
+	bitmapImage = (byte*)malloc(bitmapInfoHeader->biSizeImage);
+
+	//verify memory allocation
+	if (!bitmapImage)
+	{
+		free(bitmapImage);
+		fclose(filePtr);
+		return NULL;
+	}
+
+	//read in the bitmap image data
+	fread(bitmapImage, bitmapInfoHeader->biSizeImage, 1, filePtr);
+
+	//make sure bitmap image data was read
+	if (bitmapImage == NULL)
+	{
+		fclose(filePtr);
+		return NULL;
+	}
+	fileHeader = bitmapFileHeader;
+
+	//close file and return bitmap iamge data
+	fclose(filePtr);
+	return bitmapImage;
+}
 void SaveBitmapToFile(BYTE* pBitmapBits,
 	LONG lWidth,
 	LONG lHeight,
@@ -335,15 +391,21 @@ void SaveBitmapToFile(BYTE* pBitmapBits,
 
 int main()
 {
+	BITMAPINFOHEADER header;
+	BITMAPFILEHEADER fileHeader;
 	char *bmpName1 = "t5.bmp";
 	char *bmpName2 = "t6.bmp";
-	int numberOfThreads = 2;
+	int numberOfThreads = 4;
 	cout << "Liczba rdzeni: " << detectNumberOfCores() << endl;
-	auto bmp1 = readBMP(bmpName1);
-	auto bmp2 = readBMP(bmpName2);
+	/*auto bmp1 = readBMP(bmpName1);
+	auto bmp2 = readBMP(bmpName2);*/
+
+	auto bmp1 = LoadBitmapFile(bmpName1,&header,fileHeader);
+	auto bmp2 = LoadBitmapFile(bmpName2,&header,fileHeader); 
 	auto bmp1Size = getSizeOfBmp(bmpName1);
 	auto bmp2Size = getSizeOfBmp(bmpName2);
-	SaveBitmapToFile(bmp1, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), 24, 0, L"bmp1");
+	SaveBitmapToFile(bmp1, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName1), 24, 0, L"bmp1");
+	SaveBitmapToFile(bmp2, getWidthOfBmp(bmpName2), getHeightOfBmp(bmpName2), 24, 0, L"bmp2");
 
 
 	if (bmp1Size!=bmp2Size) 
@@ -359,11 +421,11 @@ int main()
 		threads[i].join();
 	}
 	string str = "result";
-	LPCTSTR result = L"result";
+	LPCTSTR result = L"result.bmp";
 	//LPCWSTR result1 = "result";
 	//result1 = str.c_str();
 	//drawbmp("result", getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), bmpsSize);
-	SaveBitmapToFile(resultBMP, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName2), 24, 0, result);
+	SaveBitmapToFile(resultBMP, getWidthOfBmp(bmpName1), getHeightOfBmp(bmpName1), 24, 0, result);
 	cout << "done" << endl;
 	getchar();
 	return 0;
