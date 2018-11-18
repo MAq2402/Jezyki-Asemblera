@@ -1,4 +1,3 @@
-
 #include "stdafx.h"
 #include<stdio.h>
 #include<stdlib.h>
@@ -11,6 +10,7 @@
 #include <windows.h>
 
 using namespace std;
+
 
 const WORD bitsPerPixel = 24;
 const LPCTSTR nameOfResultBitmapFile = L"result.bmp";
@@ -55,27 +55,95 @@ void executeBitmapFushion(BYTE* firstBitmap, BYTE* secondBitmap,BYTE* resultBitm
 		resultBitmap[currentIndexOfWrittingToResultBitmap + i + 2] = ((int)firstBitmap[i + 2] + (int)secondBitmap[i + 2]) / 2;	
 	}
 }
+vector<thread> addThreadsToVector(int vectorLength,BYTE* &firstBitmap,BYTE* &secondBitmap,BYTE* resultBitmap,int &currentIndexOfWrittingToResultBitmap,int partialDataSize)
+{
+	vector<thread> result;
+	for (int i = 0; i < vectorLength; i++)
+	{
+		thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
+		result.push_back(move(thread));
+		firstBitmap += partialDataSize;
+		secondBitmap += partialDataSize;
+		currentIndexOfWrittingToResultBitmap += partialDataSize;
+	}
+
+	return result;
+}
+void addThreadToVector(vector<thread>& vectorOfThreads,BYTE* firstBitmap, BYTE* secondBitmap, BYTE* &resultBitmap, int &currentIndexOfWrittingToResultBitmap, int partialDataSize)
+{
+	thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
+	vectorOfThreads.push_back(move(thread));
+	firstBitmap += partialDataSize;
+	secondBitmap += partialDataSize;
+	currentIndexOfWrittingToResultBitmap += partialDataSize;
+}
 vector<thread> createThreads(BYTE* firstBitmap,BYTE* secondBitmap,BYTE* resultBitmap,int numberOfThreads,int bitmapSize) 
 {
 	vector<thread> result;
 	int currentIndexOfWrittingToResultBitmap = 0;
+	int partialDataSize = bitmapSize / numberOfThreads;
 	if (bitmapSize%numberOfThreads==0) 
 	{
-		int partialDataSize = bitmapSize / numberOfThreads;
-		for (int i = 0; i < numberOfThreads; i++)
-		{
-			thread thread(executeBitmapFushion, firstBitmap, secondBitmap,resultBitmap,currentIndexOfWrittingToResultBitmap, partialDataSize);
-			result.push_back(move(thread));
-			firstBitmap += partialDataSize;
-			secondBitmap += partialDataSize;
-			currentIndexOfWrittingToResultBitmap += partialDataSize;
-		}
+		
+		result = addThreadsToVector(numberOfThreads, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
 	}
 	else 
 	{
-		int var = 0;
-		//TODO: PADING
-	}
+		int sizeThatLeft = bitmapSize%numberOfThreads;
+		int firstpartialDataSize = sizeThatLeft + partialDataSize;
+		// first thread with additional data
+	    vector<thread> subResult = addThreadsToVector(1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, firstpartialDataSize);
+		//currentIndexOfWrittingToResultBitmap += firstpartialDataSize;
+		/*firstBitmap += firstpartialDataSize;
+		secondBitmap += firstpartialDataSize;*/
+		result = addThreadsToVector(numberOfThreads-1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
+		result.insert(result.begin(),move(subResult[0]));
+		/*result = addThreadsToVector(numberOfThreads - 1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
+		currentIndexOfWrittingToResultBitmap += partialDataSize * 6;
+		vector<thread> subResult = addThreadsToVector(1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, firstpartialDataSize);
+		
+		
+		result.push_back(move(subResult[0]));*/
+	/*		for (int i = 0; i < numberOfThreads; i++)
+		{
+			if (i == 0)
+			{
+				thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize+sizeThatLeft);
+				result.push_back(move(thread));
+				firstBitmap += partialDataSize+sizeThatLeft;
+				secondBitmap += partialDataSize+sizeThatLeft;
+				currentIndexOfWrittingToResultBitmap += partialDataSize+sizeThatLeft;
+			}
+			else 
+			{
+				thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
+				result.push_back(move(thread));
+				firstBitmap += partialDataSize;
+				secondBitmap += partialDataSize;
+				currentIndexOfWrittingToResultBitmap += partialDataSize;
+			}			
+			
+			
+		}*/
+
+		/*for (int i = 0; i < numberOfThreads; i++)
+		{
+		if (i == 0)
+		{
+			addThreadToVector(result, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize + sizeThatLeft);
+			currentIndexOfWrittingToResultBitmap += partialDataSize + sizeThatLeft;
+		}
+		else
+		{
+		thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
+		result.push_back(move(thread));
+		firstBitmap += partialDataSize;
+		secondBitmap += partialDataSize;
+		currentIndexOfWrittingToResultBitmap += partialDataSize;
+		}*/
+
+
+		}
 	
 	return result;
 }
@@ -157,7 +225,7 @@ int main()
 	{
 		char *firstBitmapFileName = "t5.bmp";
 		char *secondBitmapFileName = "t6.bmp";
-		int numberOfThreads = 4;
+		int numberOfThreads = 7;
 		cout << "Liczba rdzeni: " << detectNumberOfCores() << endl;
 
 		BYTE* firstBitmap = loadBitmapFromFile(firstBitmapFileName);
@@ -185,6 +253,8 @@ int main()
 		saveBitmapToFile(resultBitmap, getWidthOfBitmap(firstBitmapFileName), getHeightOfBitmap(firstBitmapFileName), sizeOfFirstBitmap);
 
 		cout << "done" << endl;
+		unsigned _int64 a = 210, b = 55;
+		cout << MyProc1(a, b);
 
 		getchar();
 
