@@ -69,14 +69,6 @@ vector<thread> addThreadsToVector(int vectorLength,BYTE* &firstBitmap,BYTE* &sec
 
 	return result;
 }
-void addThreadToVector(vector<thread>& vectorOfThreads,BYTE* firstBitmap, BYTE* secondBitmap, BYTE* &resultBitmap, int &currentIndexOfWrittingToResultBitmap, int partialDataSize)
-{
-	thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
-	vectorOfThreads.push_back(move(thread));
-	firstBitmap += partialDataSize;
-	secondBitmap += partialDataSize;
-	currentIndexOfWrittingToResultBitmap += partialDataSize;
-}
 vector<thread> createThreads(BYTE* firstBitmap,BYTE* secondBitmap,BYTE* resultBitmap,int numberOfThreads,int bitmapSize) 
 {
 	vector<thread> result;
@@ -90,61 +82,11 @@ vector<thread> createThreads(BYTE* firstBitmap,BYTE* secondBitmap,BYTE* resultBi
 	else 
 	{
 		int sizeThatLeft = bitmapSize%numberOfThreads;
-		int firstpartialDataSize = sizeThatLeft + partialDataSize;
 		// first thread with additional data
-	    vector<thread> subResult = addThreadsToVector(1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, firstpartialDataSize);
-		//currentIndexOfWrittingToResultBitmap += firstpartialDataSize;
-		/*firstBitmap += firstpartialDataSize;
-		secondBitmap += firstpartialDataSize;*/
+	    vector<thread> subResult = addThreadsToVector(1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, sizeThatLeft+partialDataSize);
 		result = addThreadsToVector(numberOfThreads-1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
 		result.insert(result.begin(),move(subResult[0]));
-		/*result = addThreadsToVector(numberOfThreads - 1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
-		currentIndexOfWrittingToResultBitmap += partialDataSize * 6;
-		vector<thread> subResult = addThreadsToVector(1, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, firstpartialDataSize);
-		
-		
-		result.push_back(move(subResult[0]));*/
-	/*		for (int i = 0; i < numberOfThreads; i++)
-		{
-			if (i == 0)
-			{
-				thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize+sizeThatLeft);
-				result.push_back(move(thread));
-				firstBitmap += partialDataSize+sizeThatLeft;
-				secondBitmap += partialDataSize+sizeThatLeft;
-				currentIndexOfWrittingToResultBitmap += partialDataSize+sizeThatLeft;
-			}
-			else 
-			{
-				thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
-				result.push_back(move(thread));
-				firstBitmap += partialDataSize;
-				secondBitmap += partialDataSize;
-				currentIndexOfWrittingToResultBitmap += partialDataSize;
-			}			
-			
-			
-		}*/
-
-		/*for (int i = 0; i < numberOfThreads; i++)
-		{
-		if (i == 0)
-		{
-			addThreadToVector(result, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize + sizeThatLeft);
-			currentIndexOfWrittingToResultBitmap += partialDataSize + sizeThatLeft;
 		}
-		else
-		{
-		thread thread(executeBitmapFushion, firstBitmap, secondBitmap, resultBitmap, currentIndexOfWrittingToResultBitmap, partialDataSize);
-		result.push_back(move(thread));
-		firstBitmap += partialDataSize;
-		secondBitmap += partialDataSize;
-		currentIndexOfWrittingToResultBitmap += partialDataSize;
-		}*/
-
-
-		}
-	
 	return result;
 }
 
@@ -225,7 +167,7 @@ int main()
 	{
 		char *firstBitmapFileName = "t5.bmp";
 		char *secondBitmapFileName = "t6.bmp";
-		int numberOfThreads = 7;
+		int numberOfThreads = 4;
 		cout << "Liczba rdzeni: " << detectNumberOfCores() << endl;
 
 		BYTE* firstBitmap = loadBitmapFromFile(firstBitmapFileName);
@@ -253,8 +195,6 @@ int main()
 		saveBitmapToFile(resultBitmap, getWidthOfBitmap(firstBitmapFileName), getHeightOfBitmap(firstBitmapFileName), sizeOfFirstBitmap);
 
 		cout << "done" << endl;
-		unsigned _int64 a = 210, b = 55;
-		cout << MyProc1(a, b);
 
 		getchar();
 
